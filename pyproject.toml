@@ -1,0 +1,39 @@
+[project]
+name = "mcporter-bridge"
+version = "0.1.0"
+description = "Expose your local MCPorter registry as one stable MCP server for coding clients."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "Citrus086"}
+]
+keywords = ["mcp", "mcporter", "fastmcp", "codex", "claude-code", "cline"]
+dependencies = [
+  "fastmcp>=3.1.0,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+mcporter-bridge = "mcporter_bridge.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/Citrus086/mcporter-bridge"
+Repository = "https://github.com/Citrus086/mcporter-bridge"
+Issues = "https://github.com/Citrus086/mcporter-bridge/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcporter_bridge"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
