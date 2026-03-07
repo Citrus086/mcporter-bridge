@@ -120,6 +120,11 @@ Or install it automatically:
 mcporter-bridge-config install --client codex
 ```
 
+Notes:
+
+- OpenAI’s docs confirm that Codex reads MCP config from `~/.codex/config.toml` using the `mcp_servers.<name>` structure for MCP servers.
+- The stdio form here is also verified locally with `codex mcp add --help`, which accepts `codex mcp add <name> -- <command...>` for stdio servers.
+
 ### Claude Code / Claude Desktop
 
 Add this to your MCP config:
@@ -140,6 +145,12 @@ Automatic install using the default `~/.claude.json` path:
 ```bash
 mcporter-bridge-config install --client claude
 ```
+
+Notes:
+
+- Anthropic’s Claude Code docs confirm that user-scoped MCP servers live in `~/.claude.json`.
+- The same docs show project-scoped servers stored in `.mcp.json` at the project root.
+- The documented JSON shape uses `mcpServers` with `command`, `args`, and `env` for stdio servers.
 
 ### Cline
 
@@ -167,6 +178,12 @@ Write to an explicit config path:
 ```bash
 mcporter-bridge-config install --client cline --config-path /path/to/mcp.json
 ```
+
+Notes:
+
+- Cline’s docs confirm that MCP settings are stored in `cline_mcp_settings.json`.
+- For local stdio servers, the documented JSON shape uses `mcpServers` with `command`, `args`, `env`, `alwaysAllow`, and `disabled`.
+- Cline’s docs use `type` for remote transport config such as `streamableHttp`, but not in the local stdio example, so the bridge does not emit `type` for Cline.
 
 ### Cursor
 
