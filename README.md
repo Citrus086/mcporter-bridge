@@ -141,7 +141,7 @@ Automatic install using the default `~/.claude.json` path:
 mcporter-bridge-config install --client claude
 ```
 
-### Cline / Cursor
+### Cline
 
 Use the same stdio shape:
 
@@ -160,13 +160,41 @@ Generate snippets:
 
 ```bash
 mcporter-bridge-config snippet --client cline
-mcporter-bridge-config snippet --client cursor
 ```
 
 Write to an explicit config path:
 
 ```bash
 mcporter-bridge-config install --client cline --config-path /path/to/mcp.json
+```
+
+### Cursor
+
+Cursor uses `mcp.json` with `mcpServers`, and for stdio servers the bridge emits `type: "stdio"` explicitly.
+
+Global config example:
+
+```json
+{
+  "mcpServers": {
+    "mcporter-bridge": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["-m", "mcporter_bridge"]
+    }
+  }
+}
+```
+
+Install into the default global path:
+
+```bash
+mcporter-bridge-config install --client cursor
+```
+
+Or write to an explicit config path:
+
+```bash
 mcporter-bridge-config install --client cursor --config-path /path/to/mcp.json
 ```
 

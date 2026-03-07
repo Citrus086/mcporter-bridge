@@ -64,9 +64,18 @@ def test_install_codex_client_updates_existing_toml(tmp_path):
     assert doc["projects"]["/tmp"]["trust_level"] == "trusted"
 
 
+def test_render_cursor_snippet_contains_stdio_type():
+    snippet = render_client_snippet("cursor", BridgeConfig())
+    payload = json.loads(snippet)
+
+    assert payload["mcpServers"]["mcporter-bridge"]["type"] == "stdio"
+    assert payload["mcpServers"]["mcporter-bridge"]["command"] == "python3"
+
+
 def test_default_config_path_only_exists_for_supported_defaults(monkeypatch, tmp_path):
     monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
 
     assert default_config_path("codex") == tmp_path / ".codex" / "config.toml"
     assert default_config_path("claude") == tmp_path / ".claude.json"
-    assert default_config_path("cursor") is None
+    assert default_config_path("cursor") == tmp_path / ".cursor" / "mcp.json"
+    assert default_config_path("cline") is None

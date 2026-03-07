@@ -25,17 +25,32 @@ def build_stdio_definition(config: BridgeConfig) -> dict[str, object]:
     }
 
 
+def build_cursor_stdio_definition(config: BridgeConfig) -> dict[str, object]:
+    definition = build_stdio_definition(config)
+    return {
+        "type": "stdio",
+        **definition,
+    }
+
+
 def default_config_path(client: str) -> Path | None:
     home = Path.home()
     if client == "codex":
         return home / ".codex" / "config.toml"
     if client == "claude":
         return home / ".claude.json"
+    if client == "cursor":
+        return home / ".cursor" / "mcp.json"
     return None
 
 
 def render_json_snippet(config: BridgeConfig) -> str:
     payload = {"mcpServers": {config.server_name: build_stdio_definition(config)}}
+    return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+
+
+def render_cursor_json_snippet(config: BridgeConfig) -> str:
+    payload = {"mcpServers": {config.server_name: build_cursor_stdio_definition(config)}}
     return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
 
 
@@ -55,12 +70,19 @@ def render_codex_snippet(config: BridgeConfig) -> str:
 def render_client_snippet(client: str, config: BridgeConfig) -> str:
     if client == "codex":
         return render_codex_snippet(config)
-    if client in {"claude", "cline", "cursor"}:
+    if client == "cursor":
+        return render_cursor_json_snippet(config)
+    if client in {"claude", "cline"}:
         return render_json_snippet(config)
     raise ValueError(f"Unsupported client: {client}")
 
 
-def install_json_client(path: Path, config: BridgeConfig) -> Path | None:
+def install_json_client(
+    path: Path,
+    config: BridgeConfig,
+    *,
+    builder=build_stdio_definition,
+) -> Path | None:
     backup_path = None
     if path.exists():
         backup_path = path.with_name(f"{path.name}.bak")
@@ -74,7 +96,7 @@ def install_json_client(path: Path, config: BridgeConfig) -> Path | None:
         payload = {}
 
     payload.setdefault("mcpServers", {})
-    payload["mcpServers"][config.server_name] = build_stdio_definition(config)
+    payload["mcpServers"][config.server_name] = builder(config)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return backup_path
 
@@ -109,6 +131,8 @@ def install_codex_client(path: Path, config: BridgeConfig) -> Path | None:
 def install_client_config(client: str, path: Path, config: BridgeConfig) -> Path | None:
     if client == "codex":
         return install_codex_client(path, config)
-    if client in {"claude", "cline", "cursor"}:
+    if client == "cursor":
+        return install_json_client(path, config, builder=build_cursor_stdio_definition)
+    if client in {"claude", "cline"}:
         return install_json_client(path, config)
     raise ValueError(f"Unsupported client: {client}")
