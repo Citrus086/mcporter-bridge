@@ -11,6 +11,7 @@ authors = [
 keywords = ["mcp", "mcporter", "fastmcp", "codex", "claude-code", "cline"]
 dependencies = [
   "fastmcp>=3.1.0,<4",
+  "tomlkit>=0.13,<1",
 ]
 
 [project.optional-dependencies]
@@ -20,6 +21,7 @@ dev = [
 
 [project.scripts]
 mcporter-bridge = "mcporter_bridge.__main__:main"
+mcporter-bridge-config = "mcporter_bridge.config_cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Citrus086/mcporter-bridge"
@@ -36,4 +38,3 @@ packages = ["src/mcporter_bridge"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-

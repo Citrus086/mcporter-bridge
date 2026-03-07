@@ -1,0 +1,6 @@
+[mcp_servers.mcporter-bridge]
+type = "stdio"
+command = "python3"
+args = ["-m", "mcporter_bridge"]
+startup_timeout_ms = 30000
+

@@ -62,6 +62,11 @@ pip install mcporter-bridge
 pipx install mcporter-bridge
 ```
 
+After installation, you get two commands:
+
+- `mcporter-bridge` to run the MCP server
+- `mcporter-bridge-config` to generate or install client snippets
+
 ### local development
 
 ```bash
@@ -95,6 +100,8 @@ mcporter list --stdio "python3 -m mcporter_bridge" --json
 
 ## Client Setup
 
+Ready-made templates live in [examples/](/Users/mima0000/mcporter-bridge/examples).
+
 ### Codex
 
 Add this to `~/.codex/config.toml`:
@@ -105,6 +112,12 @@ type = "stdio"
 command = "python3"
 args = ["-m", "mcporter_bridge"]
 startup_timeout_ms = 30000
+```
+
+Or install it automatically:
+
+```bash
+mcporter-bridge-config install --client codex
 ```
 
 ### Claude Code / Claude Desktop
@@ -122,6 +135,12 @@ Add this to your MCP config:
 }
 ```
 
+Automatic install using the default `~/.claude.json` path:
+
+```bash
+mcporter-bridge-config install --client claude
+```
+
 ### Cline / Cursor
 
 Use the same stdio shape:
@@ -136,6 +155,46 @@ Use the same stdio shape:
   }
 }
 ```
+
+Generate snippets:
+
+```bash
+mcporter-bridge-config snippet --client cline
+mcporter-bridge-config snippet --client cursor
+```
+
+Write to an explicit config path:
+
+```bash
+mcporter-bridge-config install --client cline --config-path /path/to/mcp.json
+mcporter-bridge-config install --client cursor --config-path /path/to/mcp.json
+```
+
+## Config Helper
+
+Print a snippet:
+
+```bash
+mcporter-bridge-config snippet --client codex
+```
+
+Customize the launcher:
+
+```bash
+mcporter-bridge-config snippet \
+  --client claude \
+  --python-command /opt/homebrew/bin/python3.13 \
+  --module-name mcporter_bridge
+```
+
+Install directly into a config file:
+
+```bash
+mcporter-bridge-config install --client codex
+mcporter-bridge-config install --client claude
+```
+
+When an existing config file is updated, the helper writes a sibling backup with a `.bak` suffix first.
 
 ## Example Prompts
 
@@ -154,10 +213,9 @@ Use the same stdio shape:
 
 - higher-level convenience tools for common MCPs
 - optional tool allowlists / denylists
-- client config generators
+- more client-specific path discovery
 - richer auth and diagnostics helpers
 
 ## License
 
 MIT
-
