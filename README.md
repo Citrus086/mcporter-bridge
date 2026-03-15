@@ -21,21 +21,41 @@ If you use multiple coding clients, your MCP setup usually fragments fast:
 - Lists configured MCP servers and their health
 - Inspects a specific server and its tool schemas
 - Calls any tool on any configured server through `mcporter`
+- **Lazy loading**: Activate/deactivate heavy MCPs on demand to save context
 - Optionally exposes local `agent-reach` diagnostics as helper tools
 
 This is not a transport proxy and not an enterprise gateway. It is a local-first bridge for client integration.
 
 ## Tools
 
-- `mcporter_list_servers`
-- `mcporter_get_server`
-- `mcporter_inspect_server`
-- `mcporter_call_tool`
-- `mcporter_config_doctor`
-- `mcporter_version`
-- `agent_reach_doctor`
-- `agent_reach_watch`
-- `agent_reach_version`
+### Core Tools
+
+| Tool | Description |
+|------|-------------|
+| `mcporter_list_servers` | List all configured MCP servers with health status |
+| `mcporter_help` | Query tool usage and parameter formats (渐进式查询) |
+| `mcporter_inspect_server` | Inspect a server's detailed tool schemas |
+| `mcporter_call_tool` | Call any tool on any configured server |
+| `mcporter_introduce` | Get introduction and usage guide |
+
+### Lazy Loading Tools
+
+| Tool | Description |
+|------|-------------|
+| `mcporter_list_heavy_mcps` | List heavy MCPs available for on-demand activation |
+| `mcporter_activate_mcp` | Activate a heavy MCP (e.g., chrome-devtools, playwright) |
+| `mcporter_deactivate_mcp` | Deactivate a heavy MCP to free up context |
+
+### Utility Tools
+
+| Tool | Description |
+|------|-------------|
+| `mcporter_get_server` | Read one server definition from registry |
+| `mcporter_config_doctor` | Validate config files |
+| `mcporter_version` | Show mcporter version |
+| `agent_reach_doctor` | Run Agent Reach health check |
+| `agent_reach_watch` | Quick health + update check |
+| `agent_reach_version` | Show Agent Reach version |
 
 All tools return structured output with:
 
@@ -247,6 +267,50 @@ When an existing config file is updated, the helper writes a sibling backup with
 - "Inspect the xiaohongshu server and show its tools."
 - "Call `check_login_status` on `xiaohongshu`."
 - "Run Agent Reach doctor."
+
+## Lazy Loading (按需加载)
+
+Large MCPs like `chrome-devtools` (29 tools) or `playwright` (22 tools) consume significant context. You can keep them unloaded by default and activate only when needed.
+
+### Setup
+
+1. Create the heavy MCP directory:
+```bash
+mkdir -p ~/.mcporter/heavy/available
+```
+
+2. Move heavy MCPs out of `mcporter.json` into separate files:
+```bash
+# Example: move playwright to heavy
+echo '{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    }
+  }
+}' > ~/.mcporter/heavy/available/playwright.json
+```
+
+3. Remove the MCP from your main `mcporter.json`.
+
+### Workflow
+
+```
+1. mcporter_list_servers()              # Check current servers
+   ↓ Need playwright but not listed?
+2. mcporter_list_heavy_mcps()           # See available heavy MCPs
+   ↓
+3. mcporter_activate_mcp("playwright")  # Activate it
+   ↓
+4. mcporter_list_servers()              # Confirm activation
+   ↓
+5. Use playwright tools...
+   ↓
+6. mcporter_deactivate_mcp("playwright") # Free up context when done
+```
+
+This allows upstream LLMs to **self-manage context** by loading/unloading heavy MCPs on demand.
 
 ## Environment Variables
 
