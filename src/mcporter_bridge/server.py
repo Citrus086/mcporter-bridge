@@ -160,66 +160,27 @@ def mcporter_list_servers(
 
 
 USAGE_GUIDE = """
-# mcporter-bridge 使用指南
-
-## 概述
-
-mcporter-bridge 让你能访问 mcporter 管理的所有 MCP 服务器（如小红书、抖音等）。
-
-## 推荐工作流程
-
-1. **查看可用服务器** → `mcporter_list_servers`
-2. **查询工具参数** → `mcporter_help(server="xiaohongshu")` 或 `mcporter_help(server="xiaohongshu", tool="search_feeds")`
-3. **调用工具** → `mcporter_call_tool(server_name="xiaohongshu", tool_name="search_feeds", arguments={"keyword": "搜索内容"})`
-
-## 工具列表
-
-| 工具 | 用途 |
-|------|------|
-| `mcporter_list_servers` | 列出所有可用服务器 |
-| `mcporter_help` | 查询工具使用方法和参数格式（本工具） |
-| `mcporter_inspect_server` | 查看服务器的详细工具 schema |
-| `mcporter_call_tool` | 调用指定服务器的工具 |
-| `mcporter_get_server` | 获取服务器配置信息 |
-| `mcporter_config_doctor` | 检查配置是否正确 |
-| `mcporter_version` | 查看 mcporter 版本 |
+## 工作流程
+1. `mcporter_list_servers()` → 查看可用服务器
+2. `mcporter_help(server="xxx")` → 查看工具列表
+3. `mcporter_help(server="xxx", tool="yyy")` → 查看参数格式
+4. `mcporter_call_tool(server_name="xxx", tool_name="yyy", arguments={...})` → 调用
 
 ## 常见错误
-
-❌ arguments 传字符串：`arguments: '{"key": "value"}'`
-✅ arguments 传对象：`arguments: {"key": "value"}`
-
-❌ 参数名错误：`server_name` 写成 `server`
-✅ 使用正确的参数名
-
-## 示例：搜索小红书
-
-```
-1. mcporter_help(server="xiaohongshu")  # 查看可用工具
-2. mcporter_help(server="xiaohongshu", tool="search_feeds")  # 查看参数格式
-3. mcporter_call_tool(
-     server_name="xiaohongshu",
-     tool_name="search_feeds",
-     arguments={"keyword": "GLM"}
-   )
-```
+- ❌ `arguments: '{"key": "val"}'` → 字符串
+- ✅ `arguments: {"key": "val"}` → 对象
 """
 
 
 @app.tool(
-    description="""查询 mcporter 工具的使用方法和参数格式。
+    description="""查询工具使用方法。
 
-在调用 `mcporter_call_tool` 之前，建议先用本工具查询参数格式，避免参数错误。
+参数：
+- 不传参数：返回使用指南
+- 只传 server：返回该服务器的工具列表
+- 传 server + tool：返回工具的参数格式
 
-参数说明：
-- 不传参数：返回完整使用指南
-- 只传 server：返回该服务器的所有工具列表
-- 传 server + tool：返回该工具的详细参数说明
-
-示例：
-- `mcporter_help()` → 返回使用指南
-- `mcporter_help(server="xiaohongshu")` → 列出小红书所有工具
-- `mcporter_help(server="xiaohongshu", tool="search_feeds")` → 查看搜索工具的参数
+示例：`mcporter_help(server="xiaohongshu", tool="search_feeds")`
 """
 )
 def mcporter_help(
@@ -339,42 +300,16 @@ def mcporter_inspect_server(
 
 
 @app.tool(
-    description="""Call any tool on a configured mcporter server.
+    description="""调用指定服务器的工具。
 
-## 使用流程（重要！）
+参数：
+- server_name: 服务器名（如 xiaohongshu、douyin）
+- tool_name: 工具名（如 search_feeds）
+- arguments: JSON 对象，**不是字符串**
 
-1. **先查询可用服务器**：调用 `mcporter_list_servers` 查看所有服务器
-2. **查询工具参数格式**：调用 `mcporter_help` 或 `mcporter_inspect_server` 获取参数 schema
-3. **调用工具**：使用正确的参数格式调用本工具
+示例：`mcporter_call_tool(server_name="xiaohongshu", tool_name="search_feeds", arguments={"keyword": "GLM"})`
 
-## 参数格式说明
-
-- `server_name`: 服务器名称，如 `xiaohongshu`、`douyin`
-- `tool_name`: 工具名称，如 `search_feeds`、`get_feed_detail`
-- `arguments`: JSON 对象格式的参数，**不是字符串**
-
-## arguments 参数示例
-
-正确格式（JSON 对象）：
-```json
-{"keyword": "GLM 乱码", "filters": {"sort_by": "最新"}}
-```
-
-错误格式（不要这样用）：
-- `'{"keyword": "test"}'` ← 不要传字符串
-- `"keyword=GLM"` ← 不要用 key=value 格式
-
-## 完整调用示例
-
-搜索小红书内容：
-- server_name: "xiaohongshu"
-- tool_name: "search_feeds"
-- arguments: {"keyword": "搜索关键词"}
-
-获取笔记详情：
-- server_name: "xiaohongshu"
-- tool_name: "get_feed_detail"
-- arguments: {"feed_id": "xxx", "xsec_token": "yyy"}
+⚠️ 先用 mcporter_help 查询参数格式
 """
 )
 def mcporter_call_tool(
@@ -431,13 +366,7 @@ def agent_reach_version() -> dict[str, Any]:
     return _run_binary_command("agent-reach", ["version"], timeout_ms=5_000)
 
 
-@app.tool(
-    description="""列出可按需激活的大型 MCP。
-
-这些 MCP 配置在 heavy/available 目录中，默认不加载以节省上下文。
-使用 mcporter_activate_mcp 激活后才能使用。
-"""
-)
+@app.tool(description="列出可按需激活的大型 MCP（默认不加载以节省上下文）。")
 def mcporter_list_heavy_mcps() -> dict[str, Any]:
     """列出可用但未激活的大型 MCP。"""
     heavy_dir = Path.home() / ".mcporter" / "heavy" / "available"
@@ -477,20 +406,7 @@ def mcporter_list_heavy_mcps() -> dict[str, Any]:
     }
 
 
-@app.tool(
-    description="""激活一个大型 MCP。
-
-大型 MCP 默认不加载以节省上下文。当你需要使用某个 MCP 但发现它不在
-mcporter_list_servers 的结果中时，可以用此工具激活它。
-
-激活后需要重新调用 mcporter_list_servers 才能看到新激活的服务器。
-
-参数：
-- name: MCP 名称，如 'chrome-devtools'、'playwright' 等
-
-可用的大型 MCP 列表可通过 mcporter_list_heavy_mcps 获取。
-"""
-)
+@app.tool(description="激活一个大型 MCP。激活后用 mcporter_list_servers 确认。参数：name 如 'chrome-devtools'")
 def mcporter_activate_mcp(name: str, timeout_ms: int = 10_000) -> dict[str, Any]:
     """激活一个大型 MCP。"""
     toggle_script = Path.home() / ".mcporter" / "mcp-toggle.sh"
@@ -523,17 +439,7 @@ def mcporter_activate_mcp(name: str, timeout_ms: int = 10_000) -> dict[str, Any]
     }
 
 
-@app.tool(
-    description="""停用一个大型 MCP（释放上下文）。
-
-当你使用完某个大型 MCP 后，可以停用它以释放上下文空间。
-
-参数：
-- name: MCP 名称，如 'chrome-devtools'、'playwright' 等
-
-注意：停用后该 MCP 的工具将不再可用，直到再次激活。
-"""
-)
+@app.tool(description="停用一个大型 MCP（释放上下文）。参数：name 如 'chrome-devtools'")
 def mcporter_deactivate_mcp(name: str, timeout_ms: int = 10_000) -> dict[str, Any]:
     """停用一个大型 MCP。"""
     toggle_script = Path.home() / ".mcporter" / "mcp-toggle.sh"
@@ -563,79 +469,19 @@ def mcporter_deactivate_mcp(name: str, timeout_ms: int = 10_000) -> dict[str, An
     }
 
 
-@app.tool(description="""向 LLM 介绍 mcporter-bridge 的功能和使用方法。
-
-当你（LLM）不确定如何使用 MCP 工具时，调用此工具获取引导。
-这个桥接器连接了 mcporter 管理的所有 MCP 服务器，服务器列表是动态的，
-请通过 mcporter_list_servers 自行发现当前可用的服务器。
-""")
+@app.tool(description="获取 mcporter-bridge 的使用说明和工具列表。")
 def mcporter_introduce() -> dict[str, Any]:
     return {
-        "ok": True,
         "role": "mcporter-bridge：统一桥接 mcporter 管理的所有 MCP 服务器",
-        "important_note": "服务器列表是动态的，不会在此硬编码。请按以下步骤自行发现：",
-        "discovery_steps": [
-            {
-                "step": 1,
-                "action": "mcporter_list_servers()",
-                "purpose": "发现当前可用的所有 MCP 服务器及其健康状态",
-            },
-            {
-                "step": 2,
-                "action": "mcporter_help(server='xxx')",
-                "purpose": "查看某服务器的所有工具列表（将 xxx 替换为实际服务器名）",
-            },
-            {
-                "step": 3,
-                "action": "mcporter_help(server='xxx', tool='yyy')",
-                "purpose": "查看具体工具的参数格式",
-            },
-            {
-                "step": 4,
-                "action": "mcporter_call_tool(server_name='xxx', tool_name='yyy', arguments={...})",
-                "purpose": "调用工具完成任务",
-            },
+        "workflow": [
+            "1. mcporter_list_servers() - 查看可用服务器",
+            "2. mcporter_help(server='xxx') - 查看工具列表",
+            "3. mcporter_call_tool(server_name='xxx', tool_name='yyy', arguments={...}) - 调用",
         ],
-        "usage_patterns": [
-            {
-                "scenario": "浏览器自动化",
-                "hint": "查找 playwright 服务器，使用 browser_navigate/browser_click 等工具",
-            },
-            {
-                "scenario": "网页搜索",
-                "hint": "查找 web-search-prime 或 exa 服务器",
-            },
-            {
-                "scenario": "文档查询",
-                "hint": "查找 context7 服务器，用于查询编程库文档",
-            },
-            {
-                "scenario": "GitHub 操作",
-                "hint": "查找 github 服务器，用于仓库、Issue、PR 操作",
-            },
-            {
-                "scenario": "社交媒体",
-                "hint": "查找 xiaohongshu、douyin 等服务器",
-            },
-            {
-                "scenario": "图像/视频分析",
-                "hint": "查找 zai-mcp-server 服务器",
-            },
+        "lazy_loading": "如果需要的 MCP 不在列表中，用 mcporter_list_heavy_mcps 查看可激活的大型 MCP",
+        "tools": [
+            "mcporter_list_servers / mcporter_help / mcporter_call_tool",
+            "mcporter_list_heavy_mcps / mcporter_activate_mcp / mcporter_deactivate_mcp",
         ],
-        "available_helpers": [
-            "mcporter_list_servers - 列出所有服务器",
-            "mcporter_help - 查询工具使用方法（支持渐进式查询）",
-            "mcporter_inspect_server - 查看服务器详细 schema",
-            "mcporter_call_tool - 调用任意工具",
-            "mcporter_config_doctor - 检查配置",
-            "mcporter_list_heavy_mcps - 列出可按需激活的大型 MCP",
-            "mcporter_activate_mcp - 激活一个大型 MCP",
-            "mcporter_deactivate_mcp - 停用一个大型 MCP",
-            "mcporter_introduce - 显示此介绍",
-        ],
-        "lazy_loading_note": "大型 MCP（如 chrome-devtools、playwright）默认不加载以节省上下文。"
-        "如果需要的 MCP 不在 mcporter_list_servers 结果中，"
-        "请先调用 mcporter_list_heavy_mcps 查看，然后用 mcporter_activate_mcp 激活。",
-        "reminder": "服务器列表会随用户安装/配置而变化，始终先调用 mcporter_list_servers 获取最新状态",
     }
 
