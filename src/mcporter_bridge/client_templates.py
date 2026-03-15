@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from tomlkit import document, dumps, parse, table
+from tomlkit import comment, document, dumps, parse, table
 
 
 SUPPORTED_CLIENTS = ("codex", "claude", "cline", "cursor")
@@ -22,14 +22,16 @@ def build_stdio_definition(config: BridgeConfig) -> dict[str, object]:
     return {
         "command": config.python_command,
         "args": ["-m", config.module_name],
+        "description": "mcporter-bridge: 统一桥接 mcporter 管理的所有 MCP 服务器。使用 mcporter_introduce() 了解如何使用，或 mcporter_list_servers() 发现可用服务器。",
     }
 
 
 def build_cursor_stdio_definition(config: BridgeConfig) -> dict[str, object]:
-    definition = build_stdio_definition(config)
     return {
         "type": "stdio",
-        **definition,
+        "command": config.python_command,
+        "args": ["-m", config.module_name],
+        "description": "mcporter-bridge: 统一桥接 mcporter 管理的所有 MCP 服务器。使用 mcporter_introduce() 了解如何使用，或 mcporter_list_servers() 发现可用服务器。",
     }
 
 
@@ -62,6 +64,10 @@ def render_codex_snippet(config: BridgeConfig) -> str:
     bridge["command"] = config.python_command
     bridge["args"] = ["-m", config.module_name]
     bridge["startup_timeout_ms"] = config.startup_timeout_ms
+    # 使用 TOML 注释添加描述（TOML 标准不支持 description 字段，用注释实现）
+    bridge.add(comment("mcporter-bridge: 统一桥接 mcporter 管理的所有 MCP 服务器"))
+    bridge.add(comment("使用 mcporter_introduce() 了解如何使用"))
+    bridge.add(comment("使用 mcporter_list_servers() 发现可用服务器"))
     servers[config.server_name] = bridge
     doc["mcp_servers"] = servers
     return dumps(doc)

@@ -100,7 +100,7 @@ mcporter list --stdio "python3 -m mcporter_bridge" --json
 
 ## Client Setup
 
-Ready-made templates live in [examples/](/Users/mima0000/mcporter-bridge/examples).
+Ready-made templates live in [examples/](examples/).
 
 ### Codex
 

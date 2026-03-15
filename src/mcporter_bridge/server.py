@@ -380,10 +380,20 @@ def mcporter_inspect_server(
 def mcporter_call_tool(
     server_name: str,
     tool_name: str,
-    arguments: dict[str, Any] | None = None,
+    arguments: dict[str, Any] | str | None = None,
     timeout_ms: int = DEFAULT_TIMEOUT_MS,
     output_format: Literal["json", "text", "markdown", "raw"] = "json",
 ) -> dict[str, Any]:
+    # 兼容处理：某些 MCP 客户端会把嵌套的 arguments 对象序列化成字符串
+    if isinstance(arguments, str):
+        try:
+            arguments = json.loads(arguments)
+        except json.JSONDecodeError as e:
+            return {
+                "ok": False,
+                "error": f"arguments is a string but not valid JSON: {e}",
+                "received_arguments": arguments[:200] if len(arguments) > 200 else arguments,
+            }
     args = ["call", f"{server_name}.{tool_name}", "--output", output_format]
     if arguments is not None:
         args.extend(["--args", json.dumps(arguments, ensure_ascii=False)])
@@ -419,4 +429,213 @@ def agent_reach_watch(
 @app.tool(description="Return the local Agent Reach CLI version.")
 def agent_reach_version() -> dict[str, Any]:
     return _run_binary_command("agent-reach", ["version"], timeout_ms=5_000)
+
+
+@app.tool(
+    description="""列出可按需激活的大型 MCP。
+
+这些 MCP 配置在 heavy/available 目录中，默认不加载以节省上下文。
+使用 mcporter_activate_mcp 激活后才能使用。
+"""
+)
+def mcporter_list_heavy_mcps() -> dict[str, Any]:
+    """列出可用但未激活的大型 MCP。"""
+    heavy_dir = Path.home() / ".mcporter" / "heavy" / "available"
+    active_dir = Path.home() / ".mcporter" / "heavy" / "active"
+
+    available = []
+    if heavy_dir.exists():
+        for f in heavy_dir.glob("*.json"):
+            name = f.stem
+            # 读取配置获取描述信息
+            try:
+                config = json.loads(f.read_text())
+                servers = config.get("mcpServers", {})
+                server_count = len(servers)
+                server_names = list(servers.keys())
+            except Exception:
+                server_count = 0
+                server_names = []
+
+            available.append({
+                "name": name,
+                "server_count": server_count,
+                "servers": server_names,
+            })
+
+    active = []
+    if active_dir.exists():
+        for f in active_dir.iterdir():
+            if f.is_symlink() or f.suffix == ".json":
+                active.append(f.stem if f.suffix == ".json" else f.name)
+
+    return {
+        "ok": True,
+        "available": available,
+        "active": active,
+        "hint": "使用 mcporter_activate_mcp('名称') 激活，使用 mcporter_deactivate_mcp('名称') 停用",
+    }
+
+
+@app.tool(
+    description="""激活一个大型 MCP。
+
+大型 MCP 默认不加载以节省上下文。当你需要使用某个 MCP 但发现它不在
+mcporter_list_servers 的结果中时，可以用此工具激活它。
+
+激活后需要重新调用 mcporter_list_servers 才能看到新激活的服务器。
+
+参数：
+- name: MCP 名称，如 'chrome-devtools'、'playwright' 等
+
+可用的大型 MCP 列表可通过 mcporter_list_heavy_mcps 获取。
+"""
+)
+def mcporter_activate_mcp(name: str, timeout_ms: int = 10_000) -> dict[str, Any]:
+    """激活一个大型 MCP。"""
+    toggle_script = Path.home() / ".mcporter" / "mcp-toggle.sh"
+
+    if not toggle_script.exists():
+        return {
+            "ok": False,
+            "error": "mcp-toggle.sh 脚本不存在，请先配置按需加载系统",
+            "hint": "运行以下命令创建：\nmkdir -p ~/.mcporter/heavy/available",
+        }
+
+    result = _run_command(
+        [str(toggle_script), "activate", name],
+        timeout_ms=timeout_ms,
+    )
+
+    if result.get("ok") and "已激活" in result.get("stdout", ""):
+        return {
+            "ok": True,
+            "name": name,
+            "message": f"已激活 {name}，请调用 mcporter_list_servers 查看更新后的服务器列表",
+            "hint": "使用完毕后可调用 mcporter_deactivate_mcp 停用以释放上下文",
+        }
+
+    return {
+        "ok": False,
+        "name": name,
+        "error": result.get("stderr") or result.get("stdout"),
+        "hint": "检查名称是否正确，可用 mcporter_list_heavy_mcps 查看列表",
+    }
+
+
+@app.tool(
+    description="""停用一个大型 MCP（释放上下文）。
+
+当你使用完某个大型 MCP 后，可以停用它以释放上下文空间。
+
+参数：
+- name: MCP 名称，如 'chrome-devtools'、'playwright' 等
+
+注意：停用后该 MCP 的工具将不再可用，直到再次激活。
+"""
+)
+def mcporter_deactivate_mcp(name: str, timeout_ms: int = 10_000) -> dict[str, Any]:
+    """停用一个大型 MCP。"""
+    toggle_script = Path.home() / ".mcporter" / "mcp-toggle.sh"
+
+    if not toggle_script.exists():
+        return {
+            "ok": False,
+            "error": "mcp-toggle.sh 脚本不存在",
+        }
+
+    result = _run_command(
+        [str(toggle_script), "deactivate", name],
+        timeout_ms=timeout_ms,
+    )
+
+    if result.get("ok") and "已停用" in result.get("stdout", ""):
+        return {
+            "ok": True,
+            "name": name,
+            "message": f"已停用 {name}",
+        }
+
+    return {
+        "ok": False,
+        "name": name,
+        "error": result.get("stderr") or result.get("stdout"),
+    }
+
+
+@app.tool(description="""向 LLM 介绍 mcporter-bridge 的功能和使用方法。
+
+当你（LLM）不确定如何使用 MCP 工具时，调用此工具获取引导。
+这个桥接器连接了 mcporter 管理的所有 MCP 服务器，服务器列表是动态的，
+请通过 mcporter_list_servers 自行发现当前可用的服务器。
+""")
+def mcporter_introduce() -> dict[str, Any]:
+    return {
+        "ok": True,
+        "role": "mcporter-bridge：统一桥接 mcporter 管理的所有 MCP 服务器",
+        "important_note": "服务器列表是动态的，不会在此硬编码。请按以下步骤自行发现：",
+        "discovery_steps": [
+            {
+                "step": 1,
+                "action": "mcporter_list_servers()",
+                "purpose": "发现当前可用的所有 MCP 服务器及其健康状态",
+            },
+            {
+                "step": 2,
+                "action": "mcporter_help(server='xxx')",
+                "purpose": "查看某服务器的所有工具列表（将 xxx 替换为实际服务器名）",
+            },
+            {
+                "step": 3,
+                "action": "mcporter_help(server='xxx', tool='yyy')",
+                "purpose": "查看具体工具的参数格式",
+            },
+            {
+                "step": 4,
+                "action": "mcporter_call_tool(server_name='xxx', tool_name='yyy', arguments={...})",
+                "purpose": "调用工具完成任务",
+            },
+        ],
+        "usage_patterns": [
+            {
+                "scenario": "浏览器自动化",
+                "hint": "查找 playwright 服务器，使用 browser_navigate/browser_click 等工具",
+            },
+            {
+                "scenario": "网页搜索",
+                "hint": "查找 web-search-prime 或 exa 服务器",
+            },
+            {
+                "scenario": "文档查询",
+                "hint": "查找 context7 服务器，用于查询编程库文档",
+            },
+            {
+                "scenario": "GitHub 操作",
+                "hint": "查找 github 服务器，用于仓库、Issue、PR 操作",
+            },
+            {
+                "scenario": "社交媒体",
+                "hint": "查找 xiaohongshu、douyin 等服务器",
+            },
+            {
+                "scenario": "图像/视频分析",
+                "hint": "查找 zai-mcp-server 服务器",
+            },
+        ],
+        "available_helpers": [
+            "mcporter_list_servers - 列出所有服务器",
+            "mcporter_help - 查询工具使用方法（支持渐进式查询）",
+            "mcporter_inspect_server - 查看服务器详细 schema",
+            "mcporter_call_tool - 调用任意工具",
+            "mcporter_config_doctor - 检查配置",
+            "mcporter_list_heavy_mcps - 列出可按需激活的大型 MCP",
+            "mcporter_activate_mcp - 激活一个大型 MCP",
+            "mcporter_deactivate_mcp - 停用一个大型 MCP",
+            "mcporter_introduce - 显示此介绍",
+        ],
+        "lazy_loading_note": "大型 MCP（如 chrome-devtools、playwright）默认不加载以节省上下文。"
+        "如果需要的 MCP 不在 mcporter_list_servers 结果中，"
+        "请先调用 mcporter_list_heavy_mcps 查看，然后用 mcporter_activate_mcp 激活。",
+        "reminder": "服务器列表会随用户安装/配置而变化，始终先调用 mcporter_list_servers 获取最新状态",
+    }
 
