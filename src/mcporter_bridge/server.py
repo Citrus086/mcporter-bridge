@@ -26,7 +26,7 @@ BUILTIN_DESCRIPTIONS: dict[str, dict[str, Any]] = {
     "bosszhipin": {"description": "Boss 直聘操作", "tags": ["招聘", "求职", "简历"], "best_for": "搜索职位、投递简历"},
     "notion": {"description": "Notion 笔记操作", "tags": ["笔记", "文档", "协作"], "best_for": "读写 Notion 页面"},
     "figma": {"description": "Figma 设计工具", "tags": ["设计", "UI", "原型"], "best_for": "读取 Figma 设计稿"},
-    "github": {"description": "GitHub 官方 MCP", "tags": ["GitHub", "代码", "仓库", "协作"], "best_for": "创建/更新文件、管理 Issues/PRs、搜索代码"},
+    "github": {"description": "GitHub 官方 MCP (Docker 本地版)", "tags": ["GitHub", "代码", "仓库", "协作", "Issues", "PR"], "best_for": "代码搜索、仓库管理、Issues/PRs、文件操作 (响应快~2s)"},
     "linkedin-scraper": {"description": "LinkedIn 数据抓取", "tags": ["LinkedIn", "职场", "招聘", "人脉"], "best_for": "获取个人/公司资料、搜索职位和人才"},
     "wechat-article": {"description": "微信文章处理", "tags": ["微信", "公众号", "文章"], "best_for": "转换微信文章格式"},
 }
@@ -365,28 +365,24 @@ def _run_binary_command(
 - active: 当前已加载的 MCP（可直接调用）
 - available: 未加载但可激活的大型 MCP
 
-常用 MCP 速查表：
-┌─────────┬──────────────────┬────────────────────────────┬─────────────┐
-│ 类型    │ 名称             │ 描述                       │ 状态        │
-├─────────┼──────────────────┼────────────────────────────┼─────────────┤
-│ 小型    │ web-search-prime │ 智谱网页搜索               │ 通常已加载  │
-│ 小型    │ exa              │ AI 搜索引擎                │ 通常已加载  │
-│ 小型    │ xiaohongshu      │ 小红书操作                 │ 通常已加载  │
-│ 小型    │ douyin           │ 抖音操作                   │ 通常已加载  │
-│ 小型    │ github           │ GitHub 官方 MCP            │ 通常已加载  │
-│ 小型    │ bosszhipin       │ Boss 直聘操作              │ 通常已加载  │
-│ 小型    │ linkedin-scraper │ LinkedIn 数据抓取          │ 需登录      │
-├─────────┼──────────────────┼────────────────────────────┼─────────────┤
-│ 大型⚠️  │ playwright       │ 浏览器自动化（22 tools）   │ 需激活      │
-│ 大型⚠️  │ chrome-devtools  │ Chrome 调试（29 tools）    │ 需激活      │
-└─────────┴──────────────────┴────────────────────────────┴─────────────┘
+工具分类概览：
+- 搜索类：智谱网页搜索、Exa AI 搜索
+- 社交类：小红书、抖音平台操作
+- 开发类：GitHub 仓库阅读(zread)、技术文档查询(context7)
+- 职场类：Boss 直聘、LinkedIn 招聘求职
+- 多模态：图像分析、视频分析、OCR
+- 协作类：Notion、Figma 读写
+- 网页阅读：解析网页内容
+
+注：实际可用 MCP 以调用结果为准，本列表仅为示例
 
 ⚠️ 大型 MCP 占用大量上下文，请遵循：按需激活 → 用完即释放
 
 使用流程：
-1. 从 active 找需要的 MCP，直接 mcporter_call_tool 调用
+1. 调用本工具查看 active.servers 找需要的 MCP
 2. 大型 MCP 需先 mcporter_activate_mcp(name="xxx") 激活
-3. 用完立即 mcporter_deactivate_mcp(name="xxx") 释放上下文"""
+3. 用 mcporter_call_tool 调用具体工具
+4. 用完立即 mcporter_deactivate_mcp(name="xxx") 释放上下文"""
 )
 def mcporter_list_servers(
     timeout_ms: int = DEFAULT_TIMEOUT_MS,
