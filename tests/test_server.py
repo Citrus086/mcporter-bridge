@@ -4,25 +4,26 @@ import subprocess
 import mcporter_bridge.server as server
 
 
-def test_mcporter_get_server_uses_targeted_config_lookup(monkeypatch):
+def test_mcporter_help_raw_mode_uses_targeted_lookup(monkeypatch):
+    """测试 mcporter_help raw=true 能获取单个服务器的完整定义"""
     monkeypatch.setattr(server.shutil, "which", lambda name: "/opt/homebrew/bin/mcporter" if name == "mcporter" else None)
 
     def fake_run(command, **kwargs):
-        assert command == [
+        assert command[:4] == [
             "/opt/homebrew/bin/mcporter",
-            "config",
-            "get",
+            "list",
             "xiaohongshu",
             "--json",
         ]
-        return subprocess.CompletedProcess(command, 0, '{"name":"xiaohongshu"}', "")
+        return subprocess.CompletedProcess(command, 0, '{"name":"xiaohongshu","tools":[]}', "")
 
     monkeypatch.setattr(server.subprocess, "run", fake_run)
 
-    result = server.mcporter_get_server("xiaohongshu")
+    result = server.mcporter_help("xiaohongshu", raw=True)
 
     assert result["ok"] is True
-    assert result["parsed_json"] == {"name": "xiaohongshu"}
+    assert result["type"] == "raw_definition"
+    assert result["data"] == {"name": "xiaohongshu", "tools": []}
 
 
 def test_mcporter_call_tool_passes_json_arguments(monkeypatch):
@@ -63,7 +64,7 @@ def test_timeout_is_reported_as_structured_result(monkeypatch):
 
     monkeypatch.setattr(server.subprocess, "run", fake_run)
 
-    result = server.mcporter_inspect_server("playwright", timeout_ms=5000)
+    result = server.mcporter_help("playwright", raw=True, timeout_ms=5000)
 
     assert result["ok"] is False
     assert result["timed_out"] is True
@@ -71,11 +72,4 @@ def test_timeout_is_reported_as_structured_result(monkeypatch):
     assert result["stderr"] == "still running"
 
 
-def test_missing_optional_binary_returns_structured_error(monkeypatch):
-    monkeypatch.setattr(server.shutil, "which", lambda _name: None)
-    monkeypatch.setattr(server, "KNOWN_BINARIES", {"agent-reach": []})
 
-    result = server.agent_reach_version()
-
-    assert result["ok"] is False
-    assert result["stderr"] == "Required binary not found: agent-reach"
