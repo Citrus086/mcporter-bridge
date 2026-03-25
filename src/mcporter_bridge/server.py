@@ -23,7 +23,6 @@ BUILTIN_DESCRIPTIONS: dict[str, dict[str, Any]] = {
     "context7": {"description": "技术文档查询", "tags": ["文档", "代码", "API"], "best_for": "查询编程库的官方文档"},
     "zread": {"description": "GitHub 仓库阅读", "tags": ["GitHub", "代码", "仓库"], "best_for": "搜索/阅读 GitHub 仓库内容"},
     "zai-mcp-server": {"description": "Z.AI 多模态工具", "tags": ["图像", "视频", "分析"], "best_for": "图像分析、视频分析、OCR"},
-    "bosszhipin": {"description": "Boss 直聘操作", "tags": ["招聘", "求职", "简历"], "best_for": "搜索职位、投递简历"},
     "notion": {"description": "Notion 笔记操作", "tags": ["笔记", "文档", "协作"], "best_for": "读写 Notion 页面"},
     "figma": {"description": "Figma 设计工具", "tags": ["设计", "UI", "原型"], "best_for": "读取 Figma 设计稿"},
     "github": {"description": "GitHub 官方 MCP (Docker 本地版)", "tags": ["GitHub", "代码", "仓库", "协作", "Issues", "PR"], "best_for": "代码搜索、仓库管理、Issues/PRs、文件操作 (响应快~2s)"},
@@ -369,7 +368,7 @@ def _run_binary_command(
 - 搜索类：智谱网页搜索、Exa AI 搜索
 - 社交类：小红书、抖音平台操作
 - 开发类：GitHub 仓库阅读(zread)、技术文档查询(context7)
-- 职场类：Boss 直聘、LinkedIn 招聘求职
+- 职场类：LinkedIn 招聘求职
 - 多模态：图像分析、视频分析、OCR
 - 协作类：Notion、Figma 读写
 - 网页阅读：解析网页内容

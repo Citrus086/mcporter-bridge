@@ -347,7 +347,6 @@ echo '{
 | context7 | 技术文档查询 | 查询编程库的官方文档 |
 | zread | GitHub 仓库阅读 | 搜索/阅读 GitHub 仓库内容 |
 | zai-mcp-server | Z.AI 多模态工具 | 图像分析、视频分析、OCR |
-| bosszhipin | Boss 直聘操作 | 搜索职位、投递简历 |
 | notion | Notion 笔记操作 | 读写 Notion 页面 |
 | figma | Figma 设计工具 | 读取 Figma 设计稿 |
 | github | GitHub 官方 MCP | 创建/更新文件、管理 Issues/PRs、搜索代码 |
