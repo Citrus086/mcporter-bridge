@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from tomlkit import comment, document, dumps, parse, table
+from tomlkit import comment, document, dumps, inline_table, parse, table
 
 
 SUPPORTED_CLIENTS = ("codex", "claude", "cline", "cursor")
@@ -16,23 +16,41 @@ class BridgeConfig:
     python_command: str = "python3"
     module_name: str = "mcporter_bridge"
     startup_timeout_ms: int = 30_000
+    env: dict[str, str] | None = None
+
+
+def _maybe_env(config: BridgeConfig) -> dict[str, str] | None:
+    env: dict[str, str] = {}
+    # Always suppress FastMCP stdout banner to keep stdio JSON-RPC clean
+    env["FASTMCP_SHOW_SERVER_BANNER"] = "false"
+    if config.env:
+        env.update(config.env)
+    return env if env else None
 
 
 def build_stdio_definition(config: BridgeConfig) -> dict[str, object]:
-    return {
+    result: dict[str, object] = {
         "command": config.python_command,
         "args": ["-m", config.module_name],
         "description": "mcporter-bridge: 统一桥接 mcporter 管理的所有 MCP 服务器。使用 mcporter_introduce() 了解如何使用，或 mcporter_list_servers() 发现可用服务器。",
     }
+    env = _maybe_env(config)
+    if env:
+        result["env"] = env
+    return result
 
 
 def build_cursor_stdio_definition(config: BridgeConfig) -> dict[str, object]:
-    return {
+    result: dict[str, object] = {
         "type": "stdio",
         "command": config.python_command,
         "args": ["-m", config.module_name],
         "description": "mcporter-bridge: 统一桥接 mcporter 管理的所有 MCP 服务器。使用 mcporter_introduce() 了解如何使用，或 mcporter_list_servers() 发现可用服务器。",
     }
+    env = _maybe_env(config)
+    if env:
+        result["env"] = env
+    return result
 
 
 def default_config_path(client: str) -> Path | None:
@@ -68,6 +86,14 @@ def render_codex_snippet(config: BridgeConfig) -> str:
     bridge.add(comment("mcporter-bridge: 统一桥接 mcporter 管理的所有 MCP 服务器"))
     bridge.add(comment("使用 mcporter_introduce() 了解如何使用"))
     bridge.add(comment("使用 mcporter_list_servers() 发现可用服务器"))
+
+    env = _maybe_env(config)
+    if env:
+        env_table = inline_table()
+        for k, v in env.items():
+            env_table[k] = v
+        bridge["env"] = env_table
+
     servers[config.server_name] = bridge
     doc["mcp_servers"] = servers
     return dumps(doc)
@@ -128,6 +154,14 @@ def install_codex_client(path: Path, config: BridgeConfig) -> Path | None:
     bridge["command"] = config.python_command
     bridge["args"] = ["-m", config.module_name]
     bridge["startup_timeout_ms"] = config.startup_timeout_ms
+
+    env = _maybe_env(config)
+    if env:
+        env_table = inline_table()
+        for k, v in env.items():
+            env_table[k] = v
+        bridge["env"] = env_table
+
     servers[config.server_name] = bridge
 
     path.write_text(dumps(doc), encoding="utf-8")

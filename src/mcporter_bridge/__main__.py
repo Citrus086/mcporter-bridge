@@ -1,6 +1,18 @@
 import argparse
 import os
-from mcporter_bridge.server import app
+import sys
+from pathlib import Path
+
+try:
+    from mcporter_bridge.server import app
+except ImportError:
+    # Editable install fallback: some Python distributions (e.g. Anaconda)
+    # skip .pth files when the venv directory is marked UF_HIDDEN on macOS.
+    # If we detect the typical src/ layout, add it to sys.path manually.
+    _src_dir = Path(__file__).resolve().parent.parent
+    if _src_dir.name == "src" and (_src_dir / "mcporter_bridge" / "__init__.py").exists():
+        sys.path.insert(0, str(_src_dir))
+    from mcporter_bridge.server import app
 
 
 def main() -> None:
@@ -23,7 +35,7 @@ def main() -> None:
         help="HTTP port (default: 8765)"
     )
     args = parser.parse_args()
-    
+
     if args.transport == "http":
         # HTTP 模式运行
         app.run(transport="streamable-http", host=args.host, port=args.port)
@@ -32,9 +44,8 @@ def main() -> None:
         app.run(transport="sse", host=args.host, port=args.port)
     else:
         # 默认 stdio 模式
-        app.run()
+        app.run(show_banner=False)
 
 
 if __name__ == "__main__":
     main()
-

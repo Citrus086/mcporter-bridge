@@ -13,6 +13,33 @@ from mcporter_bridge.client_templates import (
 )
 
 
+def _detect_editable_src_path() -> str | None:
+    """Detect whether mcporter_bridge is loaded from a local src/ directory.
+
+    Some Python distributions (e.g. Anaconda on macOS) skip .pth files when
+    the venv directory is marked UF_HIDDEN. If we detect an editable install,
+    we inject PYTHONPATH so the client config works out of the box.
+    """
+    try:
+        import mcporter_bridge
+    except Exception:
+        return None
+
+    pkg_file = getattr(mcporter_bridge, "__file__", None)
+    if not pkg_file:
+        return None
+
+    pkg_path = Path(pkg_file).resolve()
+    # Typical editable layout: /.../src/mcporter_bridge/__init__.py
+    if (
+        pkg_path.name == "__init__.py"
+        and pkg_path.parent.name == "mcporter_bridge"
+        and pkg_path.parent.parent.name == "src"
+    ):
+        return str(pkg_path.parent.parent)
+    return None
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="mcporter-bridge-config",
@@ -34,11 +61,16 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _bridge_config_from_args(args: argparse.Namespace) -> BridgeConfig:
+    env: dict[str, str] | None = None
+    src_path = _detect_editable_src_path()
+    if src_path:
+        env = {"PYTHONPATH": src_path}
     return BridgeConfig(
         server_name=args.server_name,
         python_command=args.python_command,
         module_name=args.module_name,
         startup_timeout_ms=args.startup_timeout_ms,
+        env=env,
     )
 
 
