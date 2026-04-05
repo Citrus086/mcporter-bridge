@@ -385,9 +385,9 @@ Editable install 失效，import mcporter_bridge 失败
 
 ### 我们已经做的修复
 
-- `pyproject.toml` 中把 hatchling editable 模式设为 `symlink`，尽量不用 `.pth` 文件。
-- `__main__.py` 里加了 bootstrap fallback：如果模块加载失败，会自动探测 `src/` 目录并注入 `sys.path`。
+- `__main__.py` 里加了 **bootstrap fallback**：如果模块加载失败，会自动探测 `src/` 目录并注入 `sys.path`。
 - `mcporter-bridge-config` 在生成客户端配置时，**自动检测 editable install 并写入 `PYTHONPATH`**，同时写入 `FASTMCP_SHOW_SERVER_BANNER=false` 保证 stdio 干净。
+- `show_banner=False`：确保 FastMCP 的启动 banner 不会污染 stdio 的 JSON-RPC 输出。
 
 ### 临时 workaround
 
@@ -406,7 +406,7 @@ chflags nohidden /path/to/your/.venv/lib/python3.12/site-packages/_mcporter_brid
 }
 ```
 
-> 这个 bug 的诡异之处在于：**pip、macOS、Python 三层单独看都没错，但串在一起就把 editable install 干掉了**。目前 Python 和 macOS 官方 issue tracker 里似乎还没有人专门报告这一现象。
+> 这个 bug 的诡异之处在于：**pip、macOS、Python 三层单独看都没错，但串在一起就把 editable install 干掉了**。更让人意外的是，我们项目的 build backend `hatchling` 目前**并不支持 symlink editable mode**，所以即使想绕过 `.pth` 文件也做不到——它只能生成 `.pth` 文件。目前 Python 和 macOS 官方 issue tracker 里似乎还没有人专门报告这一现象。
 
 ## Roadmap
 
