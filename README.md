@@ -367,6 +367,47 @@ echo '{
 - `MCPORTER_BRIDGE_MCPORTER_BIN`: override the `mcporter` binary path
 - `MCPORTER_BRIDGE_MAX_OUTPUT_CHARS`: cap captured stdout/stderr length
 
+## Troubleshooting / 一个跨三层的隐蔽 bug
+
+如果你在 macOS + Anaconda Python 环境下遇到 `ModuleNotFoundError: No module named mcporter_bridge`，或者 Claude 一直报 `Failed to reconnect`，问题可能来自一个**跨三层的隐蔽 bug**：
+
+```
+pip 写入 .pth 文件
+    ↓
+macOS 自动给该文件打上 UF_HIDDEN flag（因为父目录 .venv 被标记为隐藏）
+    ↓
+Anaconda Python 的 site.py 读取 .pth 时，检测到 UF_HIDDEN 就直接跳过
+    ↓
+Editable install 失效，import mcporter_bridge 失败
+```
+
+这会导致 `python3 -m mcporter_bridge` 直接起不来进程，Claude 等 MCP 客户端自然无法重连。
+
+### 我们已经做的修复
+
+- `pyproject.toml` 中把 hatchling editable 模式设为 `symlink`，尽量不用 `.pth` 文件。
+- `__main__.py` 里加了 bootstrap fallback：如果模块加载失败，会自动探测 `src/` 目录并注入 `sys.path`。
+- `mcporter-bridge-config` 在生成客户端配置时，**自动检测 editable install 并写入 `PYTHONPATH`**，同时写入 `FASTMCP_SHOW_SERVER_BANNER=false` 保证 stdio 干净。
+
+### 临时 workaround
+
+如果你不想重新安装，可以手动去掉 hidden flag：
+
+```bash
+chflags nohidden /path/to/your/.venv/lib/python3.12/site-packages/_mcporter_bridge.pth
+```
+
+或者直接给 Claude/Codex 等客户端的 env 加上：
+
+```json
+"env": {
+  "PYTHONPATH": "/absolute/path/to/mcporter-bridge/src",
+  "FASTMCP_SHOW_SERVER_BANNER": "false"
+}
+```
+
+> 这个 bug 的诡异之处在于：**pip、macOS、Python 三层单独看都没错，但串在一起就把 editable install 干掉了**。目前 Python 和 macOS 官方 issue tracker 里似乎还没有人专门报告这一现象。
+
 ## Roadmap
 
 - higher-level convenience tools for common MCPs
